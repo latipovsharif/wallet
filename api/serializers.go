@@ -10,3 +10,13 @@ type moneyTransferSerializer struct {
 	DstWallet int32
 	Amount    float32
 }
+
+type depositSerializer struct {
+	Wallet int32
+	Amount float32
+}
+
+type withdrawSerializer struct {
+	Wallet int32
+	Amount float32
+}

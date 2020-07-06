@@ -29,11 +29,47 @@ func (w *wallet) retrieveWithLock(db orm.DB, id int32) error {
 	return nil
 }
 
-func (w *wallet) decreaseBalance() error {
+func (w *wallet) deposit(db orm.DB, amount float32) error {
+	cd := time.Now()
+	trn := &transaction{
+		WalletID:      w.ID,
+		Amount:        amount,
+		BalanceBefore: w.Balance,
+		Comment:       "new deposit",
+		Operation:     deposit,
+		CreatedAt:     &cd,
+	}
+
+	if _, err := db.Model(trn).Insert(); err != nil {
+		return errors.Wrap(err, "cannot log deposit transaction")
+	}
+
+	if _, err := db.Model(w).WherePK().Set("balance = balance + ?", amount).Update(); err != nil {
+		return errors.Wrap(err, "cannot update balance")
+	}
+
 	return nil
 }
 
-func (w *wallet) increaseBalance() error {
+func (w *wallet) withdraw(db orm.DB, amount float32) error {
+	cd := time.Now()
+	trn := &transaction{
+		WalletID:      w.ID,
+		Amount:        amount,
+		BalanceBefore: w.Balance,
+		Comment:       "new withdraw",
+		Operation:     withdraw,
+		CreatedAt:     &cd,
+	}
+
+	if _, err := db.Model(trn).Insert(); err != nil {
+		return errors.Wrap(err, "cannot log withdraw transaction")
+	}
+
+	if _, err := db.Model(w).WherePK().Set("balance = balance - ?", amount).Update(); err != nil {
+		return errors.Wrap(err, "cannot update balance")
+	}
+
 	return nil
 }
 
