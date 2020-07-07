@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-pg/pg/v9/orm"
@@ -96,8 +97,26 @@ type transaction struct {
 	TrnID         string
 }
 
-func (t *transaction) getRow() []string {
-	return []string{string(t.ID), string(t.WalletID), t.Operation.getString(), fmt.Sprintf("%.2f", t.Amount), fmt.Sprintf("%.2f", t.BalanceBefore), t.Comment, t.CreatedAt.Format("2006/01/02")}
+func getCSVHeader() []string {
+	return []string{
+		"Trn id",
+		"Wallet id",
+		"Operation",
+		"Amount",
+		"Balance before",
+		"Comment",
+		"Operation date"}
+}
+
+func (t *transaction) getCSVRow() []string {
+	return []string{
+		strconv.FormatInt(int64(t.ID), 10),
+		strconv.FormatInt(int64(t.WalletID), 10),
+		t.Operation.getString(),
+		fmt.Sprintf("%.2f", t.Amount),
+		fmt.Sprintf("%.2f", t.BalanceBefore),
+		t.Comment,
+		t.CreatedAt.Format("2006/01/02")}
 }
 
 func transferTransaction(db orm.DB, srcWallet, dstWallet wallet, amount float32, trnID string) error {

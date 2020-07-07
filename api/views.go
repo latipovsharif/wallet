@@ -16,7 +16,18 @@ func (s *Server) createWallet(c *gin.Context) {
 		return
 	}
 
-	if err := s.db.Insert(s); err != nil {
+	ex, err := s.db.Model(serializer).Where("name = ?", serializer.Name).Exists()
+	if err != nil {
+		s.internalError(c, err)
+		return
+	}
+
+	if ex {
+		s.errorWithMessage(c, "wallet name already exists")
+		return
+	}
+
+	if err := s.db.Insert(serializer); err != nil {
 		s.internalError(c, err)
 		return
 	}
@@ -161,6 +172,8 @@ func (s *Server) excerpt(c *gin.Context) {
 		s.internalError(c, err)
 		return
 	}
+
+	s.l.Errorf("len of bytes is %v", len(b.Bytes()))
 
 	downloadName := time.Now().UTC().Format("data-20060102150405.csv")
 	c.Header("Content-Description", "File Transfer")

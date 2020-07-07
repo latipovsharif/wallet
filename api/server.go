@@ -26,6 +26,9 @@ func (s *Server) Run() error {
 		Password: os.Getenv("WALLET_DB_PASSWORD"),
 	})
 
+	s.l = logrus.StandardLogger()
+	s.l.SetOutput(os.Stdout)
+
 	s.e = gin.Default()
 	s.setRoutes(s.e.Group("/v1"))
 
