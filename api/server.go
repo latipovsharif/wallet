@@ -27,6 +27,7 @@ func (s *Server) Run() error {
 	})
 
 	s.e = gin.Default()
+	s.setRoutes(s.e.Group("/v1"))
 
 	if err := s.e.Run(os.Getenv("WALLET_HOST_ADDR")); err != nil {
 		return errors.Wrap(err, "cannot run on server")

@@ -4,5 +4,7 @@ import "github.com/latipovsharif/wallet/api"
 
 func main() {
 	s := api.Server{}
-	s.Run()
+	if err := s.Run(); err != nil {
+		panic(err)
+	}
 }
