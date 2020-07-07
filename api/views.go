@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg/v9"
@@ -50,7 +51,7 @@ func (s *Server) makeTransfer(c *gin.Context) {
 		}
 
 		// transfer money
-		if err := transferTransaction(tx, *srcWallet, *dstWallet, serializer.Amount); err != nil {
+		if err := transferTransaction(tx, *srcWallet, *dstWallet, serializer.Amount, serializer.TrnID); err != nil {
 			return errors.Wrap(err, "cannot log transactions")
 		}
 
@@ -90,7 +91,7 @@ func (s *Server) deposit(c *gin.Context) {
 			return errors.Wrap(err, "cannot retrieve wallet")
 		}
 
-		if err := w.deposit(tx, serializer.Amount); err != nil {
+		if err := w.deposit(tx, serializer.Amount, serializer.TrnID); err != nil {
 			return errors.Wrap(err, "cannot deposit")
 		}
 
@@ -118,7 +119,7 @@ func (s *Server) withdraw(c *gin.Context) {
 			return errors.Wrap(err, "cannot retrieve wallet")
 		}
 
-		if err := w.withdraw(tx, serializer.Amount); err != nil {
+		if err := w.withdraw(tx, serializer.Amount, serializer.TrnID); err != nil {
 			return errors.Wrap(err, "cannot withdraw")
 		}
 
@@ -133,7 +134,7 @@ func (s *Server) withdraw(c *gin.Context) {
 	c.JSON(http.StatusOK, "withdraw successfull")
 }
 
-func (s *Server) getOperations(c *gin.Context) {
+func (s *Server) excerpt(c *gin.Context) {
 	var do, oo string
 	wallet := c.Param("wallet")
 
@@ -155,5 +156,14 @@ func (s *Server) getOperations(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, transactions)
+	b, err := toCsv(transactions)
+	if err != nil {
+		s.internalError(c, err)
+		return
+	}
+
+	downloadName := time.Now().UTC().Format("data-20060102150405.csv")
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", "attachment; filename="+downloadName)
+	c.Data(http.StatusOK, "application/octet-stream", b.Bytes())
 }

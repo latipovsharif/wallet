@@ -10,15 +10,24 @@ import (
 
 type operation int
 
+func (o operation) getString() string {
+	if o == 1 {
+		return "deposit"
+	}
+
+	return "withdraw"
+}
+
 const (
 	deposit operation = iota + 1
 	withdraw
 )
 
 type wallet struct {
-	ID      int32
-	Name    string
-	Balance float32
+	ID           int32
+	Name         string
+	Balance      float32
+	Transactions []transaction
 }
 
 func (w *wallet) retrieveWithLock(db orm.DB, id int32) error {
@@ -29,7 +38,7 @@ func (w *wallet) retrieveWithLock(db orm.DB, id int32) error {
 	return nil
 }
 
-func (w *wallet) deposit(db orm.DB, amount float32) error {
+func (w *wallet) deposit(db orm.DB, amount float32, trnID string) error {
 	cd := time.Now()
 	trn := &transaction{
 		WalletID:      w.ID,
@@ -38,6 +47,7 @@ func (w *wallet) deposit(db orm.DB, amount float32) error {
 		Comment:       "new deposit",
 		Operation:     deposit,
 		CreatedAt:     &cd,
+		TrnID:         trnID,
 	}
 
 	if _, err := db.Model(trn).Insert(); err != nil {
@@ -51,7 +61,7 @@ func (w *wallet) deposit(db orm.DB, amount float32) error {
 	return nil
 }
 
-func (w *wallet) withdraw(db orm.DB, amount float32) error {
+func (w *wallet) withdraw(db orm.DB, amount float32, trnID string) error {
 	cd := time.Now()
 	trn := &transaction{
 		WalletID:      w.ID,
@@ -60,6 +70,7 @@ func (w *wallet) withdraw(db orm.DB, amount float32) error {
 		Comment:       "new withdraw",
 		Operation:     withdraw,
 		CreatedAt:     &cd,
+		TrnID:         trnID,
 	}
 
 	if _, err := db.Model(trn).Insert(); err != nil {
@@ -76,14 +87,20 @@ func (w *wallet) withdraw(db orm.DB, amount float32) error {
 type transaction struct {
 	ID            int32
 	WalletID      int32
+	Wallet        *wallet
 	Operation     operation
 	Amount        float32
 	BalanceBefore float32
 	Comment       string
 	CreatedAt     *time.Time
+	TrnID         string
 }
 
-func transferTransaction(db orm.DB, srcWallet, dstWallet wallet, amount float32) error {
+func (t *transaction) getRow() []string {
+	return []string{string(t.ID), string(t.WalletID), t.Operation.getString(), fmt.Sprintf("%.2f", t.Amount), fmt.Sprintf("%.2f", t.BalanceBefore), t.Comment, t.CreatedAt.Format("2006/01/02")}
+}
+
+func transferTransaction(db orm.DB, srcWallet, dstWallet wallet, amount float32, trnID string) error {
 	operationTime := time.Now()
 
 	srcTrn := &transaction{
@@ -93,6 +110,7 @@ func transferTransaction(db orm.DB, srcWallet, dstWallet wallet, amount float32)
 		BalanceBefore: srcWallet.Balance,
 		Comment:       fmt.Sprintf("transfer to wallet %v", dstWallet.Name),
 		CreatedAt:     &operationTime,
+		TrnID:         trnID,
 	}
 
 	if _, err := db.Model(srcTrn).Insert(); err != nil {
@@ -106,6 +124,7 @@ func transferTransaction(db orm.DB, srcWallet, dstWallet wallet, amount float32)
 		BalanceBefore: dstWallet.Balance,
 		Comment:       fmt.Sprintf("transfer from wallet %v", srcWallet.Name),
 		CreatedAt:     &operationTime,
+		TrnID:         trnID,
 	}
 
 	if _, err := db.Model(dstTrn).Insert(); err != nil {
